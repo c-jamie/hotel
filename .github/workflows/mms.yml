@@ -21,6 +21,3 @@ jobs:
       - name: Run Migrations
         run: |
           python main.py migrate -d "${{ secrets.DATABASE }}"
-      - name: Run MMS
-        run: |
-          python main.py scrape-mms -d "${{ secrets.DATABASE }}"
