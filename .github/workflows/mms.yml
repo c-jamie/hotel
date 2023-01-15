@@ -27,6 +27,5 @@ jobs:
         python main.py migrate -d "{DATABASE}"
     - name: Run MMS
       run: |
-        python main.
         python main.py mms-scrape -d "{DATABASE}"
 
