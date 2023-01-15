@@ -11,12 +11,13 @@ import pandas as pd
 import sqlalchemy
 from bs4 import BeautifulSoup
 from requests import Request
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
 from scrapers import models
 from scrapers.db import start_mappers
 from scrapers.models import Api
 from scrapers.utils import build_dates
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 URL_BASE_HOTELS = "https://www.mrandmrssmith.com/destinations/{region}/{area}/hotels"
 
@@ -338,5 +339,4 @@ def main(connection, num_regions, num_dates, scraper):
         num_regions=num_regions,
         num_dates=num_dates,
         scraper=scraper,
-    )
     )
