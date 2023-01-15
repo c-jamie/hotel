@@ -1,10 +1,9 @@
 import sqlalchemy
+from scrapers import models
 from sqlalchemy import (Boolean, Column, DateTime, Integer, MetaData, Numeric,
                         String, Table)
 from sqlalchemy.orm import mapper
 from sqlalchemy_json import MutableJson
-
-from scrapers import models
 
 metadata = MetaData()
 
@@ -126,4 +125,5 @@ def start_mappers():
     try:
         _ = mapper(models.Api, api)
     except sqlalchemy.exc.ArgumentError:
+        pass
         pass
