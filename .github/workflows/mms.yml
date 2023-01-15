@@ -22,8 +22,8 @@ jobs:
         pip install -r requirements.txt
     - name: Run Migrations
       run: |
-        python main.py migrate -d "{DATABASE}"
+        python main.py migrate -d "{{secrets.DATABASE}}"
     - name: Run MMS
       run: |
-        python main.py mms-scrape -d "{DATABASE}"
+        python main.py mms-scrape -d "{{secrets.DATABASE}}"
 
