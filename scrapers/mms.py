@@ -318,7 +318,7 @@ def build_all_regions(connection=None, num_regions=None, num_dates=None, scraper
         ("united-kingdom", "united-kingdom"),
     ]
 
-    dates = build_dates()[:1]
+    dates = build_dates()
 
     if num_dates is not None:
         dates = dates[:num_dates]
