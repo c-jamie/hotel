@@ -33,10 +33,9 @@ if __name__ == "__main__":
     if args.what == "scrape-mms":
         from scrapers import mms
 
-        scrape = mms.Scraper()
+        scrape = mms.Scraper(connection=args.database)
 
         mms.main(
-            connection=args.database,
             num_regions=args.num_regions,
             num_dates=args.num_dates,
             scraper=scrape,

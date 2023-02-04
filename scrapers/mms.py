@@ -29,17 +29,22 @@ CLOUD_SCRAPER = cloudscraper.create_scraper(
 class Scraper:
     """Scraper."""
 
-    def __init__(self):
-        self.session = None
+    def __init__(self, connection=None):
+        self.connection = connection
         self.date = None
 
     def get(self, *args, **kwargs):
-        if self.session is not None:
+        if self.connection is not None:
+            session = make_session(self.connection)
+        else:
+            session = None
+
+        if session is not None:
             url_db = Request("GET", args[0], **kwargs).prepare()
             assert self.date is not None
 
             try:
-                self.session.query(models.Api).filter_by(
+                session.query(models.Api).filter_by(
                     url=url_db.url, date=self.date
                 ).one()
                 exists = True
@@ -239,13 +244,14 @@ def load_data(scraper, region, area, dates):
                     time.sleep(2)
                     out_top_level.append(data_df)
 
-                    if scraper.session is not None:
+                    if scraper.connection is not None:
+                        session = make_session(scraper.connection)
                         print(f"adding mms_lite for {response.url}")
                         data_df.columns = [
                             c.replace("-", "_") for c in data_df.columns]
                         data_df.to_sql(
                             "mms_lite",
-                            con=scraper.session.get_bind(),
+                            con=session.get_bind(),
                             if_exists="append",
                             index=False,
                         )
@@ -258,7 +264,7 @@ def load_data(scraper, region, area, dates):
                             ]
                             data_deep_df.to_sql(
                                 "mms_deep",
-                                con=scraper.session.get_bind(),
+                                con=session.get_bind(),
                                 if_exists="append",
                                 index=False,
                             )
@@ -266,10 +272,10 @@ def load_data(scraper, region, area, dates):
                         else:
                             print("no deep prices found")
 
-                        scraper.session.add(
+                        session.add(
                             Api(name="mms", url=response.url, date=scraper.date)
                         )
-                        scraper.session.commit()
+                        session.commit()
                         print("added to Api")
                 else:
                     print("end of page")
@@ -290,16 +296,18 @@ def load_data(scraper, region, area, dates):
     return df_tl, df_dp
 
 
-def build_all_regions(connection=None, num_regions=None, num_dates=None, scraper=None):
+def make_session(connection):
+    print("creating a sesstion")
+    start_mappers()
+    engine = create_engine(connection, echo=False)
+    database_session = sessionmaker(bind=engine)()
+    return database_session
+
+
+def build_all_regions(num_regions=None, num_dates=None, scraper=None):
     assert scraper is not None
 
-    if connection is not None:
-        print("creating a sesstion")
-        start_mappers()
-        engine = create_engine(connection, echo=False)
-        database_session = sessionmaker(bind=engine)()
-
-        scraper.session = database_session
+    if scraper.connection is not None:
         scraper.date = dt.date.today()
     else:
         print("no session")
@@ -333,9 +341,8 @@ def build_all_regions(connection=None, num_regions=None, num_dates=None, scraper
             f"loaded {len(top_level_df)} {len(deep_price_df)} for {area} {region}")
 
 
-def main(connection, num_regions, num_dates, scraper):
+def main(num_regions, num_dates, scraper):
     build_all_regions(
-        connection=connection,
         num_regions=num_regions,
         num_dates=num_dates,
         scraper=scraper,

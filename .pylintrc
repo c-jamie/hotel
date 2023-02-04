@@ -1,0 +1,2 @@
+[MASTER]
+init-hook='import site; sys.path += site.getsitepackages()'
