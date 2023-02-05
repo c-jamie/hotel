@@ -276,6 +276,7 @@ def load_data(scraper, region, area, dates):
                             Api(name="mms", url=response.url, date=scraper.date)
                         )
                         session.commit()
+                        session.close()
                         print("added to Api")
                 else:
                     print("end of page")
