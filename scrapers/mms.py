@@ -52,6 +52,7 @@ class Scraper:
                 exists = True
             except sqlalchemy.exc.NoResultFound:
                 exists = False
+            session.close()
             return exists, CLOUD_SCRAPER.get(args[0], **kwargs)
         return False, CLOUD_SCRAPER.get(*args, **kwargs)
 
