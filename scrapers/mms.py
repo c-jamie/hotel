@@ -44,7 +44,7 @@ class Scraper:
             assert self.date is not None
 
             try:
-                db_date = scraper.date - timedelta(days=scraper.date.weekday())
+                db_date = self.date - timedelta(days=self.date.weekday())
                 session.query(models.Api).filter_by(
                     url=url_db.url, date=db_date).one()
                 exists = True
