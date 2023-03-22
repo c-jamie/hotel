@@ -1,10 +1,10 @@
 """Module provides MMS web scraper."""
 
-import argparse
 import datetime as dt
 import re
 import time
 from collections import defaultdict
+from datetime import timedelta
 
 import cloudscraper
 import pandas as pd
@@ -44,9 +44,9 @@ class Scraper:
             assert self.date is not None
 
             try:
+                db_date = scraper.date - timedelta(days=scraper.date.weekday())
                 session.query(models.Api).filter_by(
-                    url=url_db.url, date=self.date
-                ).one()
+                    url=url_db.url, date=db_date).one()
                 exists = True
             except sqlalchemy.exc.MultipleResultsFound:
                 exists = True
@@ -273,9 +273,10 @@ def load_data(scraper, region, area, dates):
                         else:
                             print("no deep prices found")
 
+                        db_date = scraper.date - \
+                            timedelta(days=scraper.date.weekday())
                         session.add(
-                            Api(name="mms", url=response.url, date=scraper.date)
-                        )
+                            Api(name="mms", url=response.url, date=db_date))
                         session.commit()
                         session.close()
                         print("added to Api")
