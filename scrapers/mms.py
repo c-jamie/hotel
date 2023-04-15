@@ -8,9 +8,11 @@ from datetime import timedelta
 
 import cloudscraper
 import pandas as pd
+import requests
 import sqlalchemy
 from bs4 import BeautifulSoup
 from requests import Request
+from requests.adapters import HTTPAdapter, Retry
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -21,9 +23,23 @@ from scrapers.utils import build_dates
 
 URL_BASE_HOTELS = "https://www.mrandmrssmith.com/destinations/{region}/{area}/hotels"
 
+SESSION = requests.session()
+
+RETRIES = Retry(total=10, backoff_factor=0.5,
+                status_forcelist=[500, 502, 503, 504])
+
+SESSION.mount("http://", HTTPAdapter(max_retries=RETRIES))
+SESSION.mount("https://", HTTPAdapter(max_retries=RETRIES))
+
 CLOUD_SCRAPER = cloudscraper.create_scraper(
-    browser={"browser": "firefox", "platform": "windows", "mobile": False},
+    browser={"browser": "firefox", "platform": "windows", "mobile": False}, delay=10
 )
+
+
+def make_url(url, **kwargs):
+    url_db = Request("GET", url, **kwargs).prepare()
+
+    return url_db.url
 
 
 class Scraper:
@@ -40,13 +56,13 @@ class Scraper:
             session = None
 
         if session is not None:
-            url_db = Request("GET", args[0], **kwargs).prepare()
+            url = make_url(args[0], **kwargs)
             assert self.date is not None
 
             try:
                 db_date = self.date - timedelta(days=self.date.weekday())
                 session.query(models.Api).filter_by(
-                    url=url_db.url, date=db_date).one()
+                    url=url, date=db_date).one()
                 exists = True
             except sqlalchemy.exc.MultipleResultsFound:
                 exists = True
@@ -74,7 +90,6 @@ def deep_price(scraper, hotel, from_date, to_date, top_name, top_id):
 
     wp = BeautifulSoup(response.text, "html.parser")
     rooms = wp.find_all("div", attrs={"data-section": True})
-    print("loading: ", response.url)
     out = defaultdict(list)
     for room in rooms:
         if room["data-room-availability"] == "available":
@@ -201,10 +216,10 @@ def load_data(scraper, region, area, dates):
             params["s[date_from]"] = date[0].date()
             params["s[date_to]"] = date[1].date()
             params["page"] = p
-            exists, response = scraper.get(
-                URL_BASE_HOTELS.format(region=region, area=area), params=params
-            )
+            url_base = URL_BASE_HOTELS.format(region=region, area=area)
+            exists, response = scraper.get(url_base, params=params)
 
+            url_db = make_url(url_base, **{"params": params})
             if not exists:
                 print("loading: ", response.url)
                 wp = BeautifulSoup(response.text, "html.parser")
@@ -275,8 +290,7 @@ def load_data(scraper, region, area, dates):
 
                         db_date = scraper.date - \
                             timedelta(days=scraper.date.weekday())
-                        session.add(
-                            Api(name="mms", url=response.url, date=db_date))
+                        session.add(Api(name="mms", url=url_db, date=db_date))
                         session.commit()
                         session.close()
                         print("added to Api")
@@ -300,7 +314,6 @@ def load_data(scraper, region, area, dates):
 
 
 def make_session(connection):
-    print("creating a sesstion")
     start_mappers()
     engine = create_engine(connection, echo=False)
     database_session = sessionmaker(bind=engine)()
@@ -316,17 +329,17 @@ def build_all_regions(num_regions=None, num_dates=None, scraper=None):
         print("no session")
 
     regions = [
-        ("greece", "greece"),
-        ("italy", "italy"),
-        ("spain,", "spain"),
+        # ("greece", "greece"),
+        # ("italy", "italy"),
+        # ("spain,", "spain"),
         ("morocco", "moocco"),
-        ("turkey", "turkey"),
-        ("montenegro", "montenegro"),
-        ("croatia", "croatia"),
-        ("portgual", "portgual"),
-        ("cyprus", "cyprus"),
-        ("france", "france"),
-        ("united-kingdom", "united-kingdom"),
+        # ("turkey", "turkey"),
+        # ("montenegro", "montenegro"),
+        # ("croatia", "croatia"),
+        # ("portgual", "portgual"),
+        # ("cyprus", "cyprus"),
+        # ("france", "france"),
+        # ("united-kingdom", "united-kingdom"),
     ]
 
     dates = build_dates()
