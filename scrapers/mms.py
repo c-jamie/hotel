@@ -329,17 +329,17 @@ def build_all_regions(num_regions=None, num_dates=None, scraper=None):
         print("no session")
 
     regions = [
-        # ("greece", "greece"),
-        # ("italy", "italy"),
-        # ("spain,", "spain"),
+        ("greece", "greece"),
+        ("italy", "italy"),
+        ("spain,", "spain"),
         ("morocco", "moocco"),
-        # ("turkey", "turkey"),
-        # ("montenegro", "montenegro"),
-        # ("croatia", "croatia"),
-        # ("portgual", "portgual"),
-        # ("cyprus", "cyprus"),
-        # ("france", "france"),
-        # ("united-kingdom", "united-kingdom"),
+        ("turkey", "turkey"),
+        ("montenegro", "montenegro"),
+        ("croatia", "croatia"),
+        ("portgual", "portgual"),
+        ("cyprus", "cyprus"),
+        ("france", "france"),
+        ("united-kingdom", "united-kingdom"),
     ]
 
     dates = build_dates()
