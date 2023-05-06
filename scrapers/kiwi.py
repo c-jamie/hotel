@@ -1,239 +1,192 @@
-import datetime as dt
 import json
-import re
-import sqlite3
-from collections import defaultdict
+import pprint
+import typing
 
-import pandas as pd
 import requests
-from bs4 import BeautifulSoup
-from utils import BASE, build_dates
+
+from scrapers.models import Kiwi1, Kiwi2, Kiwi3, Kiwi4
+from scrapers.utils import (add_data, add_url_date, build_dates,
+                            check_url_date, get_date, make_session)
+
+cookies = {
+    "kiwiSecure": "99f4d90b2c3faaf34ce057f22c45a571",
+    "SnapABugRef": "https%3A%2F%2Fwww.kiwicollection.com%2F%20",
+    "SnapABugHistory": "1#",
+    "SnapABugVisit": "2#1682949908",
+    "SnapABugUserAlias": "%23",
+}
+
+headers = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/112.0",
+    "Accept": "application/json, text/javascript, */*; q=0.01",
+    "Accept-Language": "en-GB,en;q=0.5",
+    # 'Accept-Encoding': 'gzip, deflate, br',
+    "X-Requested-With": "XMLHttpRequest",
+    "Connection": "keep-alive",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "DNT": "1",
+    "Sec-GPC": "1",
+    "Pragma": "no-cache",
+    "Cache-Control": "no-cache",
+}
+
+params = {
+    "geolocationId": "1733",
+    "hasKiwiPerks": "",
+    "hasVisaPerks": "",
+    "wowPick": "",
+    "starRating": "",
+    "brandIds[]": "",
+    "affiliateIds[]": "",
+}
 
 
-def parse_data(url):
-    print("entering parse")
-    response = requests.get(url)
-    wp = BeautifulSoup(response.text, "html.parser")
-    for v in wp.find_all("script"):
-        if v.string is not None:
-            if "initRoomsData" in v.string:
-                ak = v.string
-    hotel_name = re.findall(
-        r"(?<=hotel-detail/)(.*)(?=/\d{4}-\d{2}-\d{2}/\d{4}-\d{2}-\d{2})", url
-    )[-1]
-    p = re.compile("(?<=var initRoomsData =)(.*)(?=;)")
-    parsed = p.findall(ak)
-    return json.loads(parsed[0].strip()), hotel_name
+headers2 = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/112.0",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-GB,en;q=0.5",
+    "Origin": "https://www.kiwicollection.com",
+    "Connection": "keep-alive",
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-origin",
+    "DNT": "1",
+    "Sec-GPC": "1",
+    "Pragma": "no-cache",
+    "Cache-Control": "no-cache",
+}
 
 
-def level_two_prices(data, name, room):
-    for k in data:
-        k.pop("nightlyCostsInfo")
-        k.pop("allowedCreditCards")
-        k.pop("benefitCollections")
-        fees = k.pop("consolidatedFeesTaxes")
-        if fees is not None:
-            fee = ""
-            for f in fees:
-                fee += str(f)
-            k["fees"] = fee
-        else:
-            k["fees"] = ""
-        k["amenities"] = "|".join([list(a.values())[-1]
-                                  for a in k.pop("amenities")])
-    out = pd.DataFrame(data)
-    out["name"] = name
-    out["rooom"] = room
-    return out
+def process_bool(data):
+    for d in data.__annotations__:
+        if data.__annotations__[d] is typing.Optional[bool] or bool:
+            if getattr(data, d) == "":
+                setattr(data, d, False)
+
+    return data
 
 
-def level_one_prices(rooms, name, room_type="rooms"):
-    level_two = []
-    for room in rooms[room_type]:
-        # room = rooms['rooms']
-        level_two.append(level_two_prices(
-            room.pop("rates"), name, room["title"]))
-        room.pop("allImages")
-        for k in ["primaryImage"]:
-            image = ""
-            if room[k] is not None:
-                for p in room[k].keys():
-                    if p not in ("paths"):
-                        # import pdb; pdb.set_trace()
-                        if room[k][p] is not None:
-                            image += "|" + k + p + "=" + room[k][p]
-                    else:
-                        for q in room[k]["paths"].keys():
-                            image += "|" + k + "paths" + \
-                                q + "=" + room[k]["paths"][q]
-            room.pop(k)
-            room["image"] = image
-        room.pop("extraImages")
-        room["roomSize"] = str(room["roomSize"])
-
-    out = pd.DataFrame(rooms[room_type])
-    out["name"] = name
-    return out, pd.concat(level_two)
-
-
-def load_region(region):
-    url = (
-        url
-    ) = """https://www.kiwicollection.com/search?numAdults=2&numChildren=0&rows=50&page={page}&sortBy=relevancy&getSpecialOffers=1&keyword={region}&inDate=2020-04-04&outDate=2020-04-11"""
-    out = defaultdict(list)
-
-    def _grab(box, out):
-        # link
-        link = box.find("a", attrs={"href": True})["href"]
-        # name
-        name = box.find("a", class_="results-list-item-link").text.strip()
-        # rooms
-        rooms = (
-            box.find(
-                "ul", class_="hotel-information").find_all("li")[0].text.strip()
+def process_l1(session, location_ids, debug=False):
+    for l in location_ids:
+        print(f"processing id {l}")
+        par = {**params}
+        par["geolocationId"] = l
+        response = requests.get(
+            "https://www.kiwicollection.com/maps/coordinates",
+            params=params,
+            cookies=cookies,
+            headers=headers,
         )
-        # setting
-        try:
-            setting = (
-                box.find("ul", class_="hotel-information")
-                .find_all("li")[1]
-                .text.strip()
-            )
-        except:
-            setting = None
-        # style
-        try:
-            style = (
-                box.find("ul", class_="hotel-information")
-                .find_all("li")[2]
-                .text.strip()
-            )
-        except:
-            style = None
-        # teaser
-        teaser = box.find("p", class_="teaser").text
-        # location
-        location = box.find("span", class_="results-list-location").text
-        # rating
-        try:
-            rating = box.find("span", class_="rate-number").text
-        except:
-            print("error ", name)
-            rating = None
-        print("processed ", name)
 
-        out["link"].append(link)
-        out["name"].append(name)
-        out["rooms"].append(rooms)
-        out["setting"].append(setting)
-        out["style"].append(style)
-        out["teaser"].append(teaser)
-        out["location"].append(location)
-        out["rating"].append(rating)
-
-        return out
-
-    response = requests.get(url.format(region=region, page=1))
-    wp = BeautifulSoup(response.text, "html.parser")
-    results = int(
-        wp.find("div", class_="heading-sub-tag").text.strip().split(" ")[0])
-    pages = (results // 50) + 1
-
-    hotels = wp.find_all("li", class_="results-list-item")
-    for hotel in hotels:
-        _grab(hotel, out)
-
-    for page in range(2, pages + 1):
-        print("processing", page)
-        response = requests.get(url.format(region=region, page=page))
-        wp = BeautifulSoup(response.text, "html.parser")
-
-        hotels = wp.find_all("li", class_="results-list-item")
-        for hotel in hotels:
-            _grab(hotel, out)
-    out = pd.DataFrame(out)
-    out["search_region"] = region
-    return out
+        if len(response.content):
+            res = json.loads(response.content)
+            process_l2(session, res.pop("features"), debug=debug)
+            k1 = Kiwi1(**res)
+            add_data(session, k1, check_date=False)
+            print(f"processing id {l}, done...")
 
 
-def process_hotels(data, conn):
-    dates = build_dates()
-    base = "https://www.kiwicollection.com"
-    for u in data.itertuples(index=False):
-        level_one = []
-        level_two = []
-        print("processing...", u.link)
-        for d in dates:
-            url = base + u.link
-            url = re.sub(
-                r"\d{4}-\d{2}-\d{2}/\d{4}-\d{2}-\d{2}",
-                d[0].strftime("%Y-%m-%d") + "/" + d[1].strftime("%Y-%m-%d"),
-                url,
-            )
-            try:
-                print("building...", url)
-                raw_data, name = parse_data(url)
-                l1, l2 = level_one_prices(raw_data, name)
+def process_l2(session, data, debug=False):
+    for d in data:
+        print("processing")
 
-                l1["date_from"] = d[0]
-                l1["date_from"] = d[1]
+        if debug:
+            print(d)
 
-                l2["date_to"] = d[0]
-                l2["date_to"] = d[1]
+        obj = d.get("object", None)
 
-                l1["time_stamp"] = dt.datetime.now()
-                l2["time_stamp"] = dt.datetime.now()
+        if obj is not None:
+            prop_id = obj.get("propertyId", None)
+            if prop_id is not None:
+                for date_from, date_to in build_dates():
+                    url = f"https://www.kiwicollection.com/rooms/availability/embed/{prop_id}/{date_from:%Y-%m-%d}/{date_to:%Y-%m-%d}/2/0/1"
 
-                level_one.append(l1)
-                level_two.append(l2)
-            except:
-                print("unable to process ", url)
+                    if not check_url_date(session, url, get_date()):
+                        print(f"processing: {url}")
+                        response = requests.post(
+                            url,
+                            cookies=cookies,
+                            headers=headers,
+                        )
+                        if len(response.content):
+                            data = json.loads(response.content)
+                            rooms = data.pop("rooms", None)
+                            if rooms is not None and len(rooms) != 0:
+                                if debug:
+                                    pprint.pprint(data)
+                                data.pop("analytics")
+                                data.pop("alerts")
+                                for c in [
+                                    "childrenAges",
+                                    "otherPropertiesAvailable",
+                                    "propertyAvailabilityCriteria",
+                                    "selectedSpecialOfferRooms",
+                                    "specialOfferRooms",
+                                ]:
+                                    data[c] = {"data": data[c]}
 
-        if level_one:
-            try:
-                pd.concat(level_one).to_sql(
-                    "kiwi_level_one", conn, if_exists="append")
-                print("l1 loaded to database")
-            except Exception as e:
-                print("unable to load L1 {}".format(u.link))
-                print("error: ".format(str(e)))
+                                k2 = Kiwi2(**data)
+                                add_data(session, None, k2, check_date=False)
+                                print("added l2")
+                                process_l3(session, rooms, k2.id, debug=debug)
+                            else:
+                                print("rooms empty")
+                        else:
+                            print("response is empty")
 
-            try:
-                pd.concat(level_two).to_sql(
-                    "kiwi_level_two", conn, if_exists="append")
-                print("l2 loaded to database")
-            except Exception as e:
-                print("unable to load L2 {}".format(u.link))
-                print("error: ".format(str(e)))
+                        add_url_date(session, url, get_date())
 
-        print("processed...", u.link)
+                    else:
+                        print(f"url exists {url}, skipping...")
 
+
+def process_l3(session, data, id, debug=False):
+    print("processing l3")
+    if debug:
+        pprint.pprint(data)
+    for d in data:
+        if debug:
+            pprint.pprint(d)
+        rates = d.pop("rates", None)
+        if rates is not None and len(rates) != 0:
+            for c in ["allImages", "extraImages"]:
+                d[c] = {"data": d[c]}
+
+            k3 = Kiwi3(**d, kiwi_l2_id=id)
+            add_data(session, None, k3, check_date=False)
+            process_l4(session, rates, k3.id, debug=debug)
+            print("processing l3 done")
+        else:
+            print("rates is empty")
     return True
 
 
-def build_all_regions():
-    conn = sqlite3.connect(str(BASE / "hotel.db"))
-    data = [
-        "Italy",
-        "Greece",
-        "Spain",
-        "Morocco",
-        "France",
-        "Portugal",
-        "Montenegro",
-        "Cyprus",
-    ]
-    out = []
-    for country in data:
-        try:
-            print("#" * 20, "building... ", country)
-            regions = load_region(country)
-            out = process_hotels(regions, conn)
-            print("#" * 20, "finished...", country)
-        except Exception as e:
-            print("error", e)
-            pass
+def process_l4(session, data, id, debug=False):
+    print("processing l4")
+    for d in data:
+        for c in [
+            "amenities",
+            "benefitCollections",
+            "consolidatedFeesTaxes",
+            "nightlyCostsInfo",
+        ]:
+            d[c] = {"data": d[c]}
+
+        if debug:
+            pprint.pprint(d)
+        if isinstance(d["specialOffer"], str):
+            d["specialOffer"] = {"data": d["specialOffer"]}
+        k4 = Kiwi4(kiwi_l3_id=id, **d)
+        k4 = process_bool(k4)
+
+        add_data(session, None, k4, check_date=False)
+        print("processing l4 done")
+    return True
 
 
-if __name__ == "__main__":
-    build_all_regions()
+def main(connection, debug, **kwargs):
+    session = make_session(connection)
+    session.expire_on_commit = False
+    process_l1(session, [226, 814, 1, 188, 178, 694, 1906, 2032, 2070], debug)

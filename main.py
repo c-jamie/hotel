@@ -3,7 +3,6 @@
 import argparse
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser(
         prog="MMS", description="Process Mr Ms Smith")
     parser.add_argument(
@@ -11,7 +10,7 @@ if __name__ == "__main__":
         type=str,
         default=None,
         help="what to do",
-        choices=["migrate", "scrape-mms"],
+        choices=["migrate", "scrape-mms", "scrape-vir", "scrape-kiwi"],
     )
     parser.add_argument(
         "-nr",
@@ -44,3 +43,12 @@ if __name__ == "__main__":
         from scrapers import migrate
 
         migrate.upgrade_migrations(args.database)
+
+    elif args.what == "scrape-vir":
+        from scrapers import virt
+
+        virt.main(connection=args.database, lim=args.num_regions, debug=True)
+    elif args.what == "scrape-kiwi":
+        from scrapers import kiwi
+
+        kiwi.main(connection=args.database, lim=args.num_regions, debug=True)
