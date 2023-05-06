@@ -22,6 +22,12 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "-dbg",
+        "--debug",
+        default=None,
+        action="store_true",
+    )
+    parser.add_argument(
         "-nd", "--num-dates", type=int, dest="num_dates", default=None, help="num dates"
     )
     parser.add_argument("-d", "--database", type=str,
@@ -32,12 +38,10 @@ if __name__ == "__main__":
     if args.what == "scrape-mms":
         from scrapers import mms
 
-        scrape = mms.Scraper(connection=args.database)
-
         mms.main(
             num_regions=args.num_regions,
             num_dates=args.num_dates,
-            scraper=scrape,
+            connection=args.database,
         )
     elif args.what == "migrate":
         from scrapers import migrate
@@ -47,8 +51,10 @@ if __name__ == "__main__":
     elif args.what == "scrape-vir":
         from scrapers import virt
 
-        virt.main(connection=args.database, lim=args.num_regions, debug=True)
+        virt.main(connection=args.database,
+                  lim=args.num_regions, debug=args.debug)
     elif args.what == "scrape-kiwi":
         from scrapers import kiwi
 
-        kiwi.main(connection=args.database, lim=args.num_regions, debug=True)
+        kiwi.main(connection=args.database,
+                  lim=args.num_regions, debug=args.debug)

@@ -13,13 +13,10 @@ import sqlalchemy
 from bs4 import BeautifulSoup
 from requests import Request
 from requests.adapters import HTTPAdapter, Retry
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from scrapers import models
-from scrapers.db import start_mappers
 from scrapers.models import Api
-from scrapers.utils import build_dates
+from scrapers.utils import build_dates, make_session
 
 URL_BASE_HOTELS = "https://www.mrandmrssmith.com/destinations/{region}/{area}/hotels"
 
@@ -45,16 +42,11 @@ def make_url(url, **kwargs):
 class Scraper:
     """Scraper."""
 
-    def __init__(self, connection=None):
+    def __init__(self, connection=None, session=None):
         self.connection = connection
         self.date = None
 
-    def get(self, *args, **kwargs):
-        if self.connection is not None:
-            session = make_session(self.connection)
-        else:
-            session = None
-
+    def get(self, *args, session=None, **kwargs):
         if session is not None:
             url = make_url(args[0], **kwargs)
             assert self.date is not None
@@ -207,7 +199,7 @@ def extract_data(data):
     return out
 
 
-def load_data(scraper, region, area, dates):
+def load_data(scraper, region, area, dates, session):
     out_top_level = []
     out_deep_price = []
     params = {}
@@ -261,7 +253,6 @@ def load_data(scraper, region, area, dates):
                     out_top_level.append(data_df)
 
                     if scraper.connection is not None:
-                        session = make_session(scraper.connection)
                         print(f"adding mms_lite for {response.url}")
                         data_df.columns = [
                             c.replace("-", "_") for c in data_df.columns]
@@ -313,14 +304,7 @@ def load_data(scraper, region, area, dates):
     return df_tl, df_dp
 
 
-def make_session(connection):
-    start_mappers()
-    engine = create_engine(connection, echo=False)
-    database_session = sessionmaker(bind=engine)()
-    return database_session
-
-
-def build_all_regions(num_regions=None, num_dates=None, scraper=None):
+def build_all_regions(num_regions=None, num_dates=None, scraper=None, session=None):
     assert scraper is not None
 
     if scraper.connection is not None:
@@ -352,14 +336,15 @@ def build_all_regions(num_regions=None, num_dates=None, scraper=None):
 
     for region, area in regions:
         print("pulling: ", region, area)
-        top_level_df, deep_price_df = load_data(scraper, region, area, dates)
+        top_level_df, deep_price_df = load_data(
+            scraper, region, area, dates, session)
         print(
             f"loaded {len(top_level_df)} {len(deep_price_df)} for {area} {region}")
 
 
-def main(num_regions, num_dates, scraper):
+def main(num_regions, num_dates, connection):
+    session = make_session(connection)
+    scraper = Scraper(connection=connection)
     build_all_regions(
-        num_regions=num_regions,
-        num_dates=num_dates,
-        scraper=scraper,
+        num_regions=num_regions, num_dates=num_dates, scraper=scraper, session=session
     )

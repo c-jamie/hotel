@@ -110,17 +110,17 @@ data_2 = {
     "NumberOfAdults": "2",
     "NumberOfChildren": "0",
     "ShowFullRates": "true",
-    # "GoogleAnalyticsModel.EventName": "option_details",
-    # "GoogleAnalyticsModel.ItemId": "14949727",
-    # "GoogleAnalyticsModel.ItemName": "Auberge du Jeu de Paume, Chantilly, Relais & Chateaux",
-    # "GoogleAnalyticsModel.Coupon": "",
-    # "GoogleAnalyticsModel.ItemCategory": "Hotel",
-    # "GoogleAnalyticsModel.ItemCategory2": "8",
-    # "GoogleAnalyticsModel.ItemCategory3": "Sophisticated",
-    # "GoogleAnalyticsModel.ItemCategory4": "",
-    # "GoogleAnalyticsModel.ItemCategory5": "",
-    # "GoogleAnalyticsModel.ItemVariant": "Indigenous",
-    # "GoogleAnalyticsModel.Quantity": "0",
+    "GoogleAnalyticsModel.EventName": "option_details",
+    "GoogleAnalyticsModel.ItemId": "14949727",
+    "GoogleAnalyticsModel.ItemName": "Auberge du Jeu de Paume, Chantilly, Relais & Chateaux",
+    "GoogleAnalyticsModel.Coupon": "",
+    "GoogleAnalyticsModel.ItemCategory": "Hotel",
+    "GoogleAnalyticsModel.ItemCategory2": "8",
+    "GoogleAnalyticsModel.ItemCategory3": "Sophisticated",
+    "GoogleAnalyticsModel.ItemCategory4": "",
+    "GoogleAnalyticsModel.ItemCategory5": "",
+    "GoogleAnalyticsModel.ItemVariant": "Indigenous",
+    "GoogleAnalyticsModel.Quantity": "0",
 }
 
 
@@ -179,18 +179,25 @@ def main(connection, debug, lim, lim_dates=None):
                     data_req["CheckinDate"] = date_from.strftime("%d %b %Y")
                     data_req["CheckoutDate"] = date_to.strftime("%d %b %Y")
 
-                    url_db = f"https://www.virtuso.com{d['DetailUrl']}#HotelBookingCheckinDate={date_from:%Y-%m-%d}&HotelBookingCheckoutDate={date_to:%Y-%m-%d}"
+                    url_db = f"https://www.virtuoso.com{d['DetailUrl']}#HotelBookingCheckinDate={date_from:%Y-%m-%d}&HotelBookingCheckoutDate={date_to:%Y-%m-%d}"
 
                     print(f"url: {url_db}")
                     if debug:
                         pprint.pprint(data_req)
 
-                    response = requests.post(
-                        "https://www.virtuoso.com/hotels/ajax/DisplayHotelRoomsRateList",
-                        cookies=cookies_2,
-                        headers=headers_2,
-                        data=data_req,
-                    )
+                    with requests.Session() as s:
+                        s.get("http://www.virtuoso.com")
+
+                        response = s.post(
+                            "https://www.virtuoso.com/hotels/ajax/DisplayHotelRoomsRateList",
+                            data=data_req,
+                            cookies=cookies_2,
+                            headers=headers_2,
+                        )
+
+                    if response.status_code != 200:
+                        print(f"skipping {response.status_code}: {url_db}")
+                        continue
 
                     if not check_url_date(session, url_db, get_date()):
                         if len(response.content):
@@ -207,6 +214,7 @@ def main(connection, debug, lim, lim_dates=None):
                                     "utf-8").replace("\\x", "[ESCAPEx]")
                             )
 
+                            print(scr)
                             data_virt = json.loads(scr)
 
                             for dv in data_virt:
