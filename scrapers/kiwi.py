@@ -83,7 +83,11 @@ def process_l1(session, location_ids, debug=False):
         if len(response.content):
             res = json.loads(response.content)
             process_l2(session, res.pop("features"), debug=debug)
-            k1 = Kiwi1(**res)
+            try:
+                k1 = Kiwi1(**res)
+            except TypeError:
+                print("error: ", res)
+                continue
             add_data(session, k1, check_date=False)
             print(f"processing id {l}, done...")
 

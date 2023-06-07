@@ -3,8 +3,7 @@
 import argparse
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        prog="MMS", description="Process Mr Ms Smith")
+    parser = argparse.ArgumentParser(prog="MMS", description="Process Mr Ms Smith")
     parser.add_argument(
         "what",
         type=str,
@@ -30,8 +29,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-nd", "--num-dates", type=int, dest="num_dates", default=None, help="num dates"
     )
-    parser.add_argument("-d", "--database", type=str,
-                        help="database connection")
+    parser.add_argument("-d", "--database", type=str, help="database connection")
 
     args = parser.parse_args()
 
@@ -51,10 +49,8 @@ if __name__ == "__main__":
     elif args.what == "scrape-vir":
         from scrapers import virt
 
-        virt.main(connection=args.database,
-                  lim=args.num_regions, debug=args.debug)
+        virt.main(connection=args.database, lim=args.num_regions, debug=args.debug)
     elif args.what == "scrape-kiwi":
         from scrapers import kiwi
 
-        kiwi.main(connection=args.database,
-                  lim=args.num_regions, debug=args.debug)
+        kiwi.main(connection=args.database, lim=args.num_regions, debug=args.debug)
