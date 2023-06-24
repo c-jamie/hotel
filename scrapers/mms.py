@@ -348,3 +348,4 @@ def main(num_regions, num_dates, connection):
     build_all_regions(
         num_regions=num_regions, num_dates=num_dates, scraper=scraper, session=session
     )
+    print("ALL DONE")
