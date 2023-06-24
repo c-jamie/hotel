@@ -16,7 +16,11 @@ from scrapers.models import Api
 def make_session(connection):
     start_mappers()
     engine = create_engine(
-        connection, echo=False, pool_pre_ping=True, pool_recycle=60 * 5
+        connection,
+        echo=False,
+        pool_pre_ping=True,
+        pool_recycle=60 * 5,
+        connect_args={"sslmode": "disable", "gssencmode": "disable"},
     )
     database_session = sessionmaker(bind=engine)()
     return database_session
