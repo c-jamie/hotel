@@ -1,6 +1,7 @@
 """Entry point for process."""
 
 import argparse
+import sys
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog="MMS", description="Process Mr Ms Smith")
@@ -54,3 +55,6 @@ if __name__ == "__main__":
         from scrapers import kiwi
 
         kiwi.main(connection=args.database, lim=args.num_regions, debug=args.debug)
+
+    print("exiting..")
+    sys.exit(0)
