@@ -135,13 +135,24 @@ def main(connection, debug, lim, lim_dates=None):
         d["options"]["ClientSideOptions"]["RowsPerPage"] = 50
         d["options"]["ClientSideOptions"]["StartRow"] = i * 50
         time.sleep(5)
-        response = requests.post(
-            "https://www.virtuoso.com/hotels/GetSearchView",
-            cookies=cookies,
-            headers=headers,
-            json=d,
-        )
 
+        try:
+            response = requests.post(
+                "https://www.virtuoso.com/hotels/GetSearchView",
+                cookies=cookies,
+                headers=headers,
+                json=d,
+            )
+        except urllib3.exceptions.ProtocolError as e:
+            print("ERROR: connection")
+            print(f"{e}")
+            time.sleep(60*30)
+            response = requests.post(
+                "https://www.virtuoso.com/hotels/GetSearchView",
+                cookies=cookies,
+                headers=headers,
+                json=d,
+            )
         data = json.loads(response.content)
         hotels = data.get("Hotels", None)
 

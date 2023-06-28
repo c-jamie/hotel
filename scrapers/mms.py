@@ -1,5 +1,5 @@
 """Module provides MMS web scraper."""
-
+import urllib3
 import datetime as dt
 import re
 import time
@@ -22,8 +22,7 @@ URL_BASE_HOTELS = "https://www.mrandmrssmith.com/destinations/{region}/{area}/ho
 
 SESSION = requests.session()
 
-RETRIES = Retry(total=10, backoff_factor=0.5,
-                status_forcelist=[500, 502, 503, 504])
+RETRIES = Retry(total=10, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
 
 SESSION.mount("http://", HTTPAdapter(max_retries=RETRIES))
 SESSION.mount("https://", HTTPAdapter(max_retries=RETRIES))
@@ -42,25 +41,24 @@ def make_url(url, **kwargs):
 class Scraper:
     """Scraper."""
 
-    def __init__(self, connection=None, session=None):
-        self.connection = connection
+    def __init__(self, session=None):
+        self.session = session
         self.date = None
 
-    def get(self, *args, session=None, **kwargs):
-        if session is not None:
+    def get(self, *args, **kwargs):
+        if self.session is not None:
             url = make_url(args[0], **kwargs)
             assert self.date is not None
 
             try:
                 db_date = self.date - timedelta(days=self.date.weekday())
-                session.query(models.Api).filter_by(
-                    url=url, date=db_date).one()
+                self.session.query(models.Api).filter_by(url=url, date=db_date).one()
                 exists = True
             except sqlalchemy.exc.MultipleResultsFound:
                 exists = True
             except sqlalchemy.exc.NoResultFound:
                 exists = False
-            session.close()
+            self.session.close()
             return exists, CLOUD_SCRAPER.get(args[0], **kwargs)
         return False, CLOUD_SCRAPER.get(*args, **kwargs)
 
@@ -76,8 +74,7 @@ def deep_price(scraper, hotel, from_date, to_date, top_name, top_id):
 
     _, response = scraper.get(
         url_base,
-        params={**params, **{"s[date_to]": to_date,
-                             "s[date_from]": from_date}},
+        params={**params, **{"s[date_to]": to_date, "s[date_from]": from_date}},
     )
 
     wp = BeautifulSoup(response.text, "html.parser")
@@ -113,8 +110,7 @@ def deep_price(scraper, hotel, from_date, to_date, top_name, top_id):
                             -1
                         ].find("span", attrs={attr: True})
                         out[attr + "-total-price-offer"].append(total[attr])
-                        out[attr +
-                            "-night-price-offer"].append(night_offer[attr])
+                        out[attr + "-night-price-offer"].append(night_offer[attr])
                         out[attr + "-total-price-original"].append(None)
                         out[attr + "-night-price-original"].append(night[attr])
                         total_display = None
@@ -199,7 +195,7 @@ def extract_data(data):
     return out
 
 
-def load_data(scraper, region, area, dates, session):
+def load_data(scraper, region, area, dates):
     out_top_level = []
     out_deep_price = []
     params = {}
@@ -209,8 +205,13 @@ def load_data(scraper, region, area, dates, session):
             params["s[date_to]"] = date[1].date()
             params["page"] = p
             url_base = URL_BASE_HOTELS.format(region=region, area=area)
-            exists, response = scraper.get(url_base, params=params)
-
+            try:
+                exists, response = scraper.get(url_base, params=params)
+            except urllib3.exceptions.ProtocolError as e:
+                print("ERROR: connection")
+                print(f"{e}")
+                time.sleep(60 * 30)
+                exists, response = scraper.get(url_base, params=params)
             url_db = make_url(url_base, **{"params": params})
             if not exists:
                 print("loading: ", response.url)
@@ -252,26 +253,24 @@ def load_data(scraper, region, area, dates, session):
                     time.sleep(2)
                     out_top_level.append(data_df)
 
-                    if scraper.connection is not None:
+                    if scraper.session is not None:
                         print(f"adding mms_lite for {response.url}")
-                        data_df.columns = [
-                            c.replace("-", "_") for c in data_df.columns]
+                        data_df.columns = [c.replace("-", "_") for c in data_df.columns]
                         data_df.to_sql(
                             "mms_lite",
-                            con=session.get_bind(),
+                            con=scraper.session.get_bind(),
                             if_exists="append",
                             index=False,
                         )
 
                         if len(deep_px) > 0:
-                            data_deep_df = pd.concat(
-                                deep_px, ignore_index=True)
+                            data_deep_df = pd.concat(deep_px, ignore_index=True)
                             data_deep_df.columns = [
                                 c.replace("-", "_") for c in data_deep_df.columns
                             ]
                             data_deep_df.to_sql(
                                 "mms_deep",
-                                con=session.get_bind(),
+                                con=scraper.session.get_bind(),
                                 if_exists="append",
                                 index=False,
                             )
@@ -279,11 +278,10 @@ def load_data(scraper, region, area, dates, session):
                         else:
                             print("no deep prices found")
 
-                        db_date = scraper.date - \
-                            timedelta(days=scraper.date.weekday())
-                        session.add(Api(name="mms", url=url_db, date=db_date))
-                        session.commit()
-                        session.close()
+                        db_date = scraper.date - timedelta(days=scraper.date.weekday())
+                        scraper.session.add(Api(name="mms", url=url_db, date=db_date))
+                        scraper.session.commit()
+                        scraper.session.close()
                         print("added to Api")
                 else:
                     print("end of page")
@@ -304,10 +302,10 @@ def load_data(scraper, region, area, dates, session):
     return df_tl, df_dp
 
 
-def build_all_regions(num_regions=None, num_dates=None, scraper=None, session=None):
+def build_all_regions(num_regions=None, num_dates=None, scraper=None):
     assert scraper is not None
 
-    if scraper.connection is not None:
+    if scraper.session is not None:
         scraper.date = dt.date.today()
     else:
         print("no session")
@@ -336,16 +334,16 @@ def build_all_regions(num_regions=None, num_dates=None, scraper=None, session=No
 
     for region, area in regions:
         print("pulling: ", region, area)
-        top_level_df, deep_price_df = load_data(
-            scraper, region, area, dates, session)
-        print(
-            f"loaded {len(top_level_df)} {len(deep_price_df)} for {area} {region}")
+        top_level_df, deep_price_df = load_data(scraper, region, area, dates)
+        print(f"loaded {len(top_level_df)} {len(deep_price_df)} for {area} {region}")
 
 
 def main(num_regions, num_dates, connection):
     session = make_session(connection)
-    scraper = Scraper(connection=connection)
+    scraper = Scraper(session=session)
     build_all_regions(
-        num_regions=num_regions, num_dates=num_dates, scraper=scraper, session=session
+        num_regions=num_regions,
+        num_dates=num_dates,
+        scraper=scraper,
     )
     print("ALL DONE")
