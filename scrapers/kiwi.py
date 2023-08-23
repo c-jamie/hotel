@@ -83,12 +83,6 @@ def process_l1(session, location_ids, debug=False):
         if len(response.content):
             res = json.loads(response.content)
             process_l2(session, res.pop("features"), debug=debug)
-            try:
-                k1 = Kiwi1(**res)
-            except TypeError:
-                print("error: ", res)
-                continue
-            add_data(session, k1, check_date=False)
             print(f"processing id {l}, done...")
 
 
@@ -104,7 +98,7 @@ def process_l2(session, data, debug=False):
         if obj is not None:
             prop_id = obj.get("propertyId", None)
             if prop_id is not None:
-                for date_from, date_to in build_dates():
+                for date_from, date_to in build_dates()[:2]:
                     url = f"https://www.kiwicollection.com/rooms/availability/embed/{prop_id}/{date_from:%Y-%m-%d}/{date_to:%Y-%m-%d}/2/0/1"
 
                     if not check_url_date(session, url, get_date()):
@@ -144,6 +138,10 @@ def process_l2(session, data, debug=False):
 
                     else:
                         print(f"url exists {url}, skipping...")
+                d['type'] = {'type': d['type']}
+                k1 = Kiwi1(**d)
+                add_data(session, None, k1, check_date=False)
+                print("hotel {prop_id} processed")
 
 
 def process_l3(session, data, id, debug=False):

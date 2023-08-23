@@ -113,10 +113,10 @@ class Virtuoso2:
 
 @dataclass
 class Kiwi1:
-    id: int
     geometry: field(default_factory=dict)
     object: field(default_factory=dict)
     type: field(default_factory=dict)
+    id: int = None
 
 
 @dataclass
