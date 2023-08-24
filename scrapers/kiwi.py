@@ -141,7 +141,7 @@ def process_l2(session, data, debug=False):
                 d['type'] = {'type': d['type']}
                 k1 = Kiwi1(**d)
                 add_data(session, None, k1, check_date=False)
-                print("hotel {prop_id} processed")
+                print(f"hotel {prop_id} processed")
 
 
 def process_l3(session, data, id, debug=False):
