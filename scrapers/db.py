@@ -338,6 +338,8 @@ virt_l2 = Table(
     Column("TotalTaxesUsd", Numeric(18, 6), nullable=True),
     Column("url", Text, nullable=True),
     Column("date", DateTime, nullable=True),
+    Column("start_date", DateTime, nullable=True),
+    Column("end_date", DateTime, nullable=True),
 )
 
 """

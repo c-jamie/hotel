@@ -109,6 +109,8 @@ class Virtuoso2:
     TotalTaxesUsd: float
     url: str = None
     date: datetime = None
+    end_date: datetime = None
+    start_date: datetime = None
 
 
 @dataclass

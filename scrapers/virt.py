@@ -233,7 +233,7 @@ def main(connection, debug, lim, lim_dates=None):
                                     pprint.pprint(dv)
                                 dv["url"] = url_db
                                 dv["date"] = datetime.now()
-                                data_virt_2 = Virtuoso2(**dv)
+                                data_virt_2 = Virtuoso2(**dv, start_date=date_from, end_date=date_to)
 
                                 add_data(
                                     session=session,
