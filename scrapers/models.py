@@ -286,3 +286,4 @@ class Kiwi4:
     userTotalTaxes: Optional[int] = None
     userTotalTaxesWithSymbol: Optional[str] = None
     id: int = None
+    date: datetime = None

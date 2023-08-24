@@ -926,6 +926,7 @@ kiwi_l4 = Table(
     Column("userTotalRateWithSymbol", String(64), nullable=True),
     Column("userTotalTaxes", Integer, nullable=True),
     Column("userTotalTaxesWithSymbol", String(64), nullable=True),
+    Column("date", DateTime, nullable=True),
 )
 
 

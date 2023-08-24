@@ -1,7 +1,7 @@
 import json
 import pprint
 import typing
-
+from datetime import datetime
 import requests
 
 from scrapers.models import Kiwi1, Kiwi2, Kiwi3, Kiwi4
@@ -180,7 +180,7 @@ def process_l4(session, data, id, debug=False):
             pprint.pprint(d)
         if isinstance(d["specialOffer"], str):
             d["specialOffer"] = {"data": d["specialOffer"]}
-        k4 = Kiwi4(kiwi_l3_id=id, **d)
+        k4 = Kiwi4(kiwi_l3_id=id, **d, date=datetime.now())
         k4 = process_bool(k4)
 
         add_data(session, None, k4, check_date=False)
