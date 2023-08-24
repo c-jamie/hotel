@@ -98,7 +98,7 @@ def process_l2(session, data, debug=False):
         if obj is not None:
             prop_id = obj.get("propertyId", None)
             if prop_id is not None:
-                for date_from, date_to in build_dates()[:2]:
+                for date_from, date_to in build_dates():
                     url = f"https://www.kiwicollection.com/rooms/availability/embed/{prop_id}/{date_from:%Y-%m-%d}/{date_to:%Y-%m-%d}/2/0/1"
 
                     if not check_url_date(session, url, get_date()):
