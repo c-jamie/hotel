@@ -129,7 +129,7 @@ script_regex = re.compile(r"<script>(.*?)</script>", re.DOTALL)
 
 def main(connection, debug, lim, lim_dates=None):
     session = make_session(connection)
-    for i in range(1, 2):
+    for i in range(1, 200):
         d = {**json_data}
         d["options"]["ClientSideOptions"]["CurrentPage"] = i
         d["options"]["ClientSideOptions"]["RowsPerPage"] = 50
@@ -155,6 +155,10 @@ def main(connection, debug, lim, lim_dates=None):
             )
         data = json.loads(response.content)
         hotels = data.get("Hotels", None)
+
+        if debug:
+            import pprint
+            pprint.pprint(hotels)
 
         if lim is not None:
             hotels = hotels[:lim]
