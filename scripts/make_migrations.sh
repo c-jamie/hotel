@@ -1,0 +1,1 @@
+ alembic -c "scrapers/alembic.ini" revision --autogenerate -m "db"

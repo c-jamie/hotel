@@ -118,6 +118,7 @@ class Kiwi1:
     geometry: field(default_factory=dict)
     object: field(default_factory=dict)
     type: field(default_factory=dict)
+    region_info: field(default_factory=dict)
     id: int = None
 
 

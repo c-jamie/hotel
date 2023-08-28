@@ -3,6 +3,7 @@ import pprint
 import typing
 from datetime import datetime
 import requests
+from scrapers.coordinates import get_region_country_nearest_city
 
 from scrapers.models import Kiwi1, Kiwi2, Kiwi3, Kiwi4
 from scrapers.utils import (add_data, add_url_date, build_dates,
@@ -139,7 +140,11 @@ def process_l2(session, data, debug=False):
                     else:
                         print(f"url exists {url}, skipping...")
                 d['type'] = {'type': d['type']}
-                k1 = Kiwi1(**d)
+                geometry = d.get("geometry")
+                l2,l1 = geometry.get("coordinates")
+                region_info = get_region_country_nearest_city([l1, l2])
+                print(region_info)
+                k1 = Kiwi1(**d, region_info=region_info)
                 add_data(session, None, k1, check_date=False)
                 print(f"hotel {prop_id} processed")
 

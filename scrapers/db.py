@@ -757,6 +757,7 @@ kiwi_l1 = Table(
     Column("geometry", MutableJson, nullable=True),
     Column("object", MutableJson, nullable=True),
     Column("type", MutableJson, nullable=True),
+    Column("region_info", MutableJson, nullable=True),
 )
 
 kiwi_l2 = Table(
