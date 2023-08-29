@@ -120,11 +120,16 @@ def process_description(name):
         if "setting" in a.get("href"):
             out["setting"].append(a.text)
 
+    for li in wp.select(".overview-highlights * > li"):
+        out['what_we_like'].append(li.text)
+
     if "style" in out.keys():
         out["style"] = list(set(out["style"]))
 
     if "setting" in out.keys():
         out["setting"] = list(set(out["setting"]))
+
+    return out
 
 
 def process_l1(session, location_ids, debug=False):
@@ -160,7 +165,7 @@ def process_l2(session, data, debug=False):
 
             prop_id = obj.get("propertyId", None)
             if prop_id is not None:
-                for date_from, date_to in build_dates():
+                for date_from, date_to in build_dates()[:2]:
                     url = f"https://www.kiwicollection.com/rooms/availability/embed/{prop_id}/{date_from:%Y-%m-%d}/{date_to:%Y-%m-%d}/2/0/1"
 
                     if not check_url_date(session, url, get_date()):
@@ -174,8 +179,6 @@ def process_l2(session, data, debug=False):
                             data = json.loads(response.content)
                             rooms = data.pop("rooms", None)
                             if rooms is not None and len(rooms) != 0:
-                                if debug:
-                                    pprint.pprint(data)
                                 data.pop("analytics")
                                 data.pop("alerts")
                                 for c in [
@@ -205,7 +208,7 @@ def process_l2(session, data, debug=False):
                 l2, l1 = geometry.get("coordinates")
                 region_info = get_region_country_nearest_city([l1, l2])
                 print(region_info)
-                k1 = Kiwi1(**d, region_info=region_info)
+                k1 = Kiwi1(**d, region_info=region_info, description=desc)
                 add_data(session, None, k1, check_date=False)
                 print(f"hotel {prop_id} processed")
 
