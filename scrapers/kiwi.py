@@ -1,13 +1,22 @@
+from collections import defaultdict
 import json
 import pprint
 import typing
 from datetime import datetime
+from bs4 import BeautifulSoup
 import requests
+from slugify import slugify
 from scrapers.coordinates import get_region_country_nearest_city
 
 from scrapers.models import Kiwi1, Kiwi2, Kiwi3, Kiwi4
-from scrapers.utils import (add_data, add_url_date, build_dates,
-                            check_url_date, get_date, make_session)
+from scrapers.utils import (
+    add_data,
+    add_url_date,
+    build_dates,
+    check_url_date,
+    get_date,
+    make_session,
+)
 
 cookies = {
     "kiwiSecure": "99f4d90b2c3faaf34ce057f22c45a571",
@@ -69,6 +78,55 @@ def process_bool(data):
     return data
 
 
+def process_description(name):
+    cookies = {
+        "kiwiSecure": "8970930190659c34fd68fcd140a386a8",
+        "SnapABugRef": "https%3A%2F%2Fwww.kiwicollection.com%2Fhotel-detail%2Fvilla-eden-the-private-retreat%20",
+        "SnapABugHistory": "1#",
+        "SnapABugVisit": "1#1693300049",
+        "SnapABugUserAlias": "%23",
+    }
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/116.0",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-GB,en;q=0.5",
+        # 'Accept-Encoding': 'gzip, deflate, br',
+        "Connection": "keep-alive",
+        # 'Cookie': 'kiwiSecure=8970930190659c34fd68fcd140a386a8; SnapABugRef=https%3A%2F%2Fwww.kiwicollection.com%2Fhotel-detail%2Fvilla-eden-the-private-retreat%20; SnapABugHistory=1#; SnapABugVisit=1#1693300049; SnapABugUserAlias=%23',
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        # Requests doesn't support trailers
+        # 'TE': 'trailers',
+    }
+
+    url = f"https://www.kiwicollection.com/hotel-detail/{slugify(name)}"
+    print(f"loading {url}")
+    res = requests.get(url, cookies=cookies, headers=headers)
+    if len(res.text):
+        wp = BeautifulSoup(res.text, "html.parser")
+    else:
+        print("no content found")
+
+    out = defaultdict(list)
+
+    for a in wp.select(".category-items > li > a"):
+        if "style" in a.get("href"):
+            out["style"].append(a.text)
+
+        if "setting" in a.get("href"):
+            out["setting"].append(a.text)
+
+    if "style" in out.keys():
+        out["style"] = list(set(out["style"]))
+
+    if "setting" in out.keys():
+        out["setting"] = list(set(out["setting"]))
+
+
 def process_l1(session, location_ids, debug=False):
     for l in location_ids:
         print(f"processing id {l}")
@@ -97,6 +155,9 @@ def process_l2(session, data, debug=False):
         obj = d.get("object", None)
 
         if obj is not None:
+            prop_name = obj.get("title")
+            desc = process_description(prop_name)
+
             prop_id = obj.get("propertyId", None)
             if prop_id is not None:
                 for date_from, date_to in build_dates():
@@ -139,9 +200,9 @@ def process_l2(session, data, debug=False):
 
                     else:
                         print(f"url exists {url}, skipping...")
-                d['type'] = {'type': d['type']}
+                d["type"] = {"type": d["type"]}
                 geometry = d.get("geometry")
-                l2,l1 = geometry.get("coordinates")
+                l2, l1 = geometry.get("coordinates")
                 region_info = get_region_country_nearest_city([l1, l2])
                 print(region_info)
                 k1 = Kiwi1(**d, region_info=region_info)
@@ -191,6 +252,10 @@ def process_l4(session, data, id, debug=False):
         add_data(session, None, k4, check_date=False)
         print("processing l4 done")
     return True
+
+
+if __name__ == "__main__":
+    process_description("Eight Hotel Portofino")
 
 
 def main(connection, debug, **kwargs):

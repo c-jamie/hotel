@@ -192,6 +192,19 @@ def extract_data(data):
         out["data-rate-currency"] = None
         out["data-rate-ex"] = None
         out["data-rate-inc"] = None
+
+    desc = data.select(".accomodation-description > p")
+
+    try: 
+        out['style'] = desc[0].text
+    except IndexError:
+        out['style'] = ""
+    
+    try:
+        out['setting'] = desc[1].text
+    except IndexError:
+        out['setting'] = ""
+
     return out
 
 

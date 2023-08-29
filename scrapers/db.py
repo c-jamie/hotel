@@ -53,6 +53,8 @@ mms_lite = Table(
     Column("from", DateTime, nullable=True),
     Column("to", DateTime, nullable=True),
     Column("url", String(512), nullable=True),
+    Column("style", String(512), nullable=True),
+    Column("setting", String(512), nullable=True),
 )
 
 
@@ -758,6 +760,7 @@ kiwi_l1 = Table(
     Column("object", MutableJson, nullable=True),
     Column("type", MutableJson, nullable=True),
     Column("region_info", MutableJson, nullable=True),
+    Column("description", MutableJson, nullable=True),
 )
 
 kiwi_l2 = Table(

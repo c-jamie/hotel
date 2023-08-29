@@ -119,6 +119,7 @@ class Kiwi1:
     object: field(default_factory=dict)
     type: field(default_factory=dict)
     region_info: field(default_factory=dict)
+    description: field(default_factory=dict)
     id: int = None
 
 
