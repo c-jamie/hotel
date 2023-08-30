@@ -342,6 +342,7 @@ virt_l2 = Table(
     Column("date", DateTime, nullable=True),
     Column("start_date", DateTime, nullable=True),
     Column("end_date", DateTime, nullable=True),
+    Column("supplier_id", Text, nullable=True),
 )
 
 """

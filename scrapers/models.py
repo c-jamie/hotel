@@ -111,6 +111,7 @@ class Virtuoso2:
     date: datetime = None
     end_date: datetime = None
     start_date: datetime = None
+    supplier_id: str = None
 
 
 @dataclass
